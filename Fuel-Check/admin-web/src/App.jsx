@@ -1,9 +1,12 @@
-import React from 'react'
+import { Navigate, Route, Routes } from 'react-router-dom';
 
-function App() {
+
+export default function App() {
   return (
-    <div>App</div>
-  )
+    <Routes>
+      <Route path='/' element={<h1>Home</h1>}/>
+      <Route path='/about' element={<h1>about</h1>}/>
+    </Routes>
+  );
 }
 
-export default App
