@@ -55,7 +55,7 @@ export default function LoginPage() {
       navigate(redirectPath, { replace: true });
     } catch {
       setStatus({
-        text: 'Unable to login in preview mode. Please try again.',
+        text: 'Invalid username or password.',
         kind: 'error',
       });
     } finally {

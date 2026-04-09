@@ -1,4 +1,6 @@
 const SESSION_KEY = 'fuelCheckAdminPreview';
+const FIXED_ADMIN_USERNAME = 'fuelcheckadmin';
+const FIXED_ADMIN_TOKEN = 'fixed-admin-token';
 
 export function getAdminSession() {
   const raw = localStorage.getItem(SESSION_KEY);
@@ -20,4 +22,16 @@ export function saveAdminSession(sessionData) {
 
 export function clearAdminSession() {
   localStorage.removeItem(SESSION_KEY);
+}
+
+export function isValidAdminSession(session) {
+  if (!session) {
+    return false;
+  }
+
+  return (
+    session.username === FIXED_ADMIN_USERNAME &&
+    session.token === FIXED_ADMIN_TOKEN &&
+    session.ok === true
+  );
 }
