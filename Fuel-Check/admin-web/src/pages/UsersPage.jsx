@@ -1,9 +1,11 @@
-import React from 'react'
-
-function UsersPage() {
+export default function UsersPage() {
   return (
-    <div>UsersPage</div>
-  )
+    <section className="placeholder">
+      <h2>Users</h2>
+      <p>
+        This page is reserved for resident account oversight, profile checks, and
+        activity history once API integration is connected.
+      </p>
+    </section>
+  );
 }
-
-export default UsersPage
