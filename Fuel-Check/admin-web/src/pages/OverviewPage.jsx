@@ -1,3 +1,6 @@
+import { useNavigate } from 'react-router-dom';
+import { clearAdminSession } from '../utils/session';
+
 const summaryStats = [
   { title: 'Total Users', value: '1302' },
   { title: 'Total Sheds', value: '256' },
@@ -13,9 +16,21 @@ const criticalStats = [
 ];
 
 export default function OverviewPage() {
+  const navigate = useNavigate();
+
+  const handleSignOut = () => {
+    clearAdminSession();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <section>
-      <h2 className="overview-title">System summary page.</h2>
+      <div className="overview-head">
+        <h2 className="overview-title">System summary page.</h2>
+        <button type="button" className="signout-btn" onClick={handleSignOut}>
+          Sign out
+        </button>
+      </div>
 
       <div className="stat-grid">
         {summaryStats.map((card) => (
