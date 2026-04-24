@@ -4,6 +4,9 @@ const INITIAL_PENDING = [
   { id: 'p1', name: 'S.P.Lanka petroleum (pvt) ltd, Agalawatta' },
   { id: 'p2', name: 'S.P.Lanka petroleum (pvt) ltd, Agalawatta' },
   { id: 'p3', name: 'S.P.Lanka petroleum (pvt) ltd, Agalawatta' },
+  
+
+  
 ];
 
 const INITIAL_REGISTERED = [
