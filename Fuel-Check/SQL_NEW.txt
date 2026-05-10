@@ -5,6 +5,14 @@ VALUES ('verification-docs', 'verification-docs', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. CREATE TABLES
+CREATE TABLE "test-user" (
+    sid INT PRIMARY KEY,
+    name VARCHAR(50),
+    age INT
+);
+
+
+
 -- Residents Table
 CREATE TABLE public.profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
