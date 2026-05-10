@@ -1,12 +1,46 @@
-
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 
-  import React from 'react'
-  
-  function UserDashboard() {
-    return (
-    
-        <View style={styles.container}>
+// GO UP TWO LEVELS: screens -> src -> root
+import { supabase } from '../../lib/supabase'; 
+
+export default function UserDashboard({ navigation }) {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (!mounted) return;
+
+      if (error) {
+        Alert.alert("User Load Failed", error.message);
+        return;
+      }
+
+      setUser(data?.user ?? null);
+    };
+
+    loadUser();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      navigation.replace('LoginPage');
+    } catch (error) {
+      Alert.alert("Logout Failed", error.message);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerText}>Resident Dashboard</Text>
       </View>
@@ -24,12 +58,8 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
         </TouchableOpacity>
       </View>
     </View>
-
-    )
-  }
-  
-  export default UserDashboard
-
+  );
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF4CE' },
