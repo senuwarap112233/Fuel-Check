@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fuel-Check - Final Year Project Documentation</title>
+  <style>
+    :root{--bg:#f6f8fc;--card:#fff;--text:#0f172a;--muted:#64748b;--accent:#0f766e;--border:#e2e8f0}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:Segoe UI,Arial,sans-serif}
+    .page{max-width:1100px;margin:28px auto;padding:0 16px}
+    .hero{background:linear-gradient(120deg,#0f766e,#0ea5e9);color:#fff;border-radius:12px;padding:24px 28px;box-shadow:0 10px 30px rgba(14,165,233,.20)}
+    .hero h1{margin:0;font-size:28px}
+    .hero p{margin:8px 0 0;opacity:.95}
+    .card{margin-top:18px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;box-shadow:0 4px 14px rgba(15,23,42,.06)}
+    .toc{padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:#f8fafc;margin-bottom:20px}
+    .toc strong{display:block;margin-bottom:8px}
+    .toc a{display:block;color:var(--accent);text-decoration:none;font-size:14px;padding:3px 0}
+    h1,h2,h3{scroll-margin-top:12px}
+    h1{font-size:30px}
+    h2{font-size:24px;margin-top:26px}
+    h3{font-size:19px;margin-top:20px}
+    p{line-height:1.65}
+    pre{background:#0b1020;color:#e2e8f0;padding:12px;border-radius:8px;overflow:auto}
+    code{background:#ecfeff;border-radius:4px;padding:2px 5px}
+    pre code{background:transparent;padding:0}
+    table{width:100%;border-collapse:collapse;margin:14px 0}
+    th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top}
+    th{background:#ecfeff}
+    .footer{margin:16px 0;color:var(--muted);font-size:13px;text-align:center}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="hero">
+      <h1>Fuel-Check Documentation</h1>
+      <p>Standalone HTML generated from verified project sources</p>
+    </div>
+    <div class="card">
+      <div class="toc"><strong>Table of contents</strong><div id="toc-list"></div></div>
+      <article id="doc"></article>
+    </div>
+    <div class="footer">Generated on May 13, 2026</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <script id="md" type="text/plain">
+# Fuel-Check - Comprehensive Final Year Project Documentation (Verified)
+
+**Document Date:** May 2026  
+**Project Name:** Fuel-Check  
+**Codebase Scope Audited:** Mobile App, Admin Web, Supabase Edge Function, SQL setup files  
+**Verification Rule Used:** Only statements that are directly observable in repository files are included.
+
+---
+
+## Table of Contents
+
+1. [Executive Summary](#executive-summary)
+2. [Project Problem & Implemented Solution](#project-problem--implemented-solution)
+3. [System Architecture](#system-architecture)
+4. [Technology Stack (From package files)](#technology-stack-from-package-files)
+5. [Database & Data Model (From SQL + app queries)](#database--data-model-from-sql--app-queries)
+6. [Core Business Logic (Verified Algorithms)](#core-business-logic-verified-algorithms)
+7. [Authentication, Session & Login Flows](#authentication-session--login-flows)
+8. [Notification Pipeline (Restock to FCM)](#notification-pipeline-restock-to-fcm)
+9. [Main Functions with Code Walkthroughs](#main-functions-with-code-walkthroughs)
+10. [Admin Web Structure](#admin-web-structure)
+11. [File-by-File Implementation Analysis](#file-by-file-implementation-analysis)
+12. [Deployment & Runtime Notes](#deployment--runtime-notes)
+13. [Requirements Traceability Matrix](#requirements-traceability-matrix)
+14. [Current Risks & Improvement Priorities](#current-risks--improvement-priorities)
+15. [Conclusion](#conclusion)
+
+---
+
+## Executive Summary
+
+Fuel-Check is a two-client system for fuel availability visibility:
+
+- **Mobile app (Expo + React Native):** Supports resident and shed-owner flows.
+- **Admin web (React + Vite):** Supports dashboard monitoring and shed verification workflows.
+- **Backend (Supabase):** Used for Auth, PostgreSQL tables, REST/RPC access, storage, and edge-function execution.
+- **Push notifications (FCM):** Restock events are processed and delivered to users via Firebase HTTP v1 from an edge function implementation in this repository.
+
+This report is built to match project reality as of the audited source snapshot, without including unverified performance claims or assumed production telemetry.
+
+---
+
+## Project Problem & Implemented Solution
+
+### Problem Addressed
+
+People need timely information about:
+
+- Which fuel sheds are available nearby
+- Whether target fuel type appears in stock
+- Approximate queue situation
+- When a nearby shed has been restocked
+
+Shed owners need to update stock and price quickly. Admin users need visibility into registrations and report activity.
+
+### Implemented Solution in This Codebase
+
+- Residents can view verified sheds, map markers, stock signals, and community queue reports.
+- Residents can submit community reports (fuel type, stock level, queue bucket, vehicle, comment).
+- Shed users can update fuel stock, price, and next arrival date.
+- Restock processing logic exists in Supabase edge function code and targets users by `nearest_shed_id`.
+- Admin web includes login, overview metrics, report listing, and shed approval/rejection UI.
+
+---
+
+## System Architecture
+
+### High-Level Runtime Structure
+
+```
+┌───────────────────────────┐      ┌───────────────────────────┐
+│ Mobile App (Expo RN)      │      │ Admin Web (React + Vite)  │
+│ - Resident tabs           │      │ - Login                   │
+│ - Shed owner tabs         │      │ - Overview                │
+│ - FCM token registration  │      │ - Fuel stations           │
+└──────────────┬────────────┘      │ - Reports                 │
+               │                    └──────────────┬────────────┘
+               └──────────────┬────────────────────┘
+                              ▼
+                 ┌───────────────────────────────┐
+                 │ Supabase                      │
+                 │ - Auth                         │
+                 │ - PostgreSQL tables            │
+                 │ - Storage (verification docs)  │
+                 │ - RPCs used by edge function   │
+                 └──────────────┬────────────────┘
+                                ▼
+                 ┌───────────────────────────────┐
+                 │ Edge Function Logic            │
+                 │ File: supabase/index.ts        │
+                 │ - fetch/lock unprocessed events│
+                 │ - dedup + batch FCM sending    │
+                 └──────────────┬────────────────┘
+                                ▼
+                 ┌───────────────────────────────┐
+                 │ Firebase Cloud Messaging       │
+                 │ - HTTP v1 send API             │
+                 │ - Device delivery              │
+                 └───────────────────────────────┘
+```
+
+### Flow Example: Shed Stock Update to User Notification
+
+```
+1. Shed user updates fuel stock via mobile screen.
+2. App upserts row in fuel_stocks.
+3. Trigger function (documented as active in repo notes) enqueues event.
+4. Edge function processes queue, locks events, checks dedup, sends FCM.
+5. Resident receives notification if selected by nearest-shed rule.
+```
+
+---
+
+## Technology Stack (From package files)
+
+### Mobile App (`package.json`)
+
+| Category | Technology | Version in repo |
+|---|---|---|
+| Framework | Expo | `~55.0.5` |
+| UI Runtime | React Native | `0.83.2` |
+| React | React | `19.2.0` |
+| Navigation | React Navigation | `7.x` packages |
+| Backend SDK | Supabase JS | `^2.99.1` |
+| Location | Expo Location | `~55.1.4` |
+| Notifications | @react-native-firebase/messaging | `^24.0.0` |
+| Firebase base | @react-native-firebase/app | `^24.0.0` |
+| Map container | react-native-webview | `13.16.0` |
+
+### Admin Web (`admin-web/package.json`)
+
+| Category | Technology | Version in repo |
+|---|---|---|
+| Framework | React | `^19.2.0` |
+| Build Tool | Vite | `^7.1.7` |
+| Routing | react-router-dom | `^7.13.1` |
+| Backend SDK | Supabase JS | `^2.103.3` |
+
+### Supabase + Edge Runtime
+
+- Edge function implementation exists in `supabase/index.ts` and is written for Deno runtime style imports.
+- SQL setup and policy definitions are present in `sql.txt` and `sql_new.txt`.
+- Active pipeline notes are documented in `supabase/active_supabase_functions.txt`.
+
+---
+
+## Database & Data Model (From SQL + app queries)
+
+### Main Tables Used by App Code
+
+- `profiles`
+- `sheds`
+- `fuel_stocks`
+- `community_reports`
+- `user_filters`
+- `restock_events` (queue/event table used by notification pipeline)
+- `restock_notifications_log` (dedup log used by pipeline)
+
+### Example Schema Snippets Present in Repository SQL
+
+```sql
+CREATE TABLE public.fuel_stocks (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  shed_id UUID REFERENCES public.sheds(id) ON DELETE CASCADE,
+  fuel_type TEXT NOT NULL,
+  stock_liters FLOAT DEFAULT 0,
+  price_rs FLOAT DEFAULT 0,
+  next_arrival DATE,
+  last_updated TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+  UNIQUE(shed_id, fuel_type)
+);
+```
+
+```sql
+CREATE TABLE public.community_reports (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  shed_id UUID REFERENCES public.sheds(id),
+  user_id UUID REFERENCES public.profiles(id),
+  fuel_type TEXT,
+  stock_level TEXT,
+  vehicle_type TEXT,
+  queue_length TEXT,
+  comment TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+```
+
+### Trigger / RPC Pipeline Elements (Documented in repo)
+
+- Trigger function name: `notify_restock_enqueue()`
+- Edge pipeline RPC names used in edge code:
+  - `fetch_unprocessed_events_with_lock`
+  - `check_notification_sent`
+  - `record_notification_sent`
+  - `unlock_event`
+  - `get_users_for_restock_fcm`
+
+---
+
+## Core Business Logic (Verified Algorithms)
+
+### 1) User Role Resolution on App Start
+
+Observed in `App.js`:
+
+- App calls `supabase.auth.getUser()` and `supabase.auth.getSession()`.
+- Role check attempts `profiles` first, then `sheds`.
+- Timeout safety exists with a `3500ms` promise race.
+- Fallback role defaults to `resident` on timeout/error.
+
+Pseudo-flow:
+
+```text
+if user exists:
+  role = query profiles by user id
+  if not in profiles: query sheds by user id
+  if timeout/error: resident
+```
+
+### 2) Distance + Queue Derivation in Resident Home
+
+Observed in `src/screens/UserHome.js`:
+
+- Haversine-style distance is computed from user location to each verified shed using latitude/longitude pairs.
+- The formula converts degree differences to radians, then computes the great-circle distance on Earth.
+- The code uses `R = 6371`, which is the Earth radius in kilometers.
+- Recent reports (last ~24h) are used for queue approximation.
+- Queue bucket mapping used in code:
+  - `0-15 -> 7`
+  - `16-30 -> 23`
+  - `31-45 -> 38`
+  - `45+ -> 60`
+- Results are filtered by queue threshold from `user_filters.max_queue`.
+
+Distance formula used in the app:
+
+```text
+dLat = (shed.latitude - user.latitude) in radians
+dLon = (shed.longitude - user.longitude) in radians
+a = sin²(dLat/2) + cos(userLat) * cos(shedLat) * sin²(dLon/2)
+distance = 2 * R * atan2(√a, √(1-a))
+```
+
+How ordering works:
+
+- After each shed gets a computed `distance`, the array is sorted using `sort((a, b) => a.distance - b.distance)`.
+- That means the nearest shed always appears first.
+- The first item in the sorted list is saved as `nearest_shed_id` for notification targeting.
+
+### 3) Nearest Shed Persistence for Notification Targeting
+
+Also in `src/screens/UserHome.js`:
+
+- Processed sheds are sorted by distance.
+- Nearest shed id is written to `profiles.nearest_shed_id` if changed.
+- Timestamp field `nearest_shed_updated_at` is written.
+
+### 4) Shed Stock Upsert Flow
+
+Observed in `src/screens/ShedSubmitReport.js`:
+
+- Upsert into `fuel_stocks` with conflict key `shed_id,fuel_type`.
+- Fields updated include `stock_liters`, `price_rs`, `next_arrival`, `last_updated`.
+- After save, non-blocking fetch call is used to invoke restock processing endpoint.
+
+---
+
+## Authentication, Session & Login Flows
+
+### Mobile Session Pattern
+
+- Supabase auth session is persisted via the SecureStore adapter in `lib/supabase.js`.
+- `persistSession: true` keeps the session stored between app launches.
+- `autoRefreshToken: true` keeps the session valid by refreshing the token before expiry.
+- `App.js` restores the session on startup using `supabase.auth.getUser()` and `supabase.auth.getSession()`.
+- `supabase.auth.onAuthStateChange` switches the active navigator after login or logout.
+- The app routes users by role:
+  - `shed -> ShedTabs`
+  - otherwise `UserTabs`
+
+Why the app does not ask the user to log in every time:
+
+- The auth token is saved securely on the device.
+- On startup, the app checks whether the token still maps to a valid user.
+- If a valid session exists, the app skips the login screen and opens the correct dashboard automatically.
+- If the session is missing or invalid, the app falls back to the login screen.
+
+### New User Login Flow
+
+When a new resident logs in, the process in `App.js` is:
+
+1. The app starts and waits briefly for native modules.
+2. `supabase.auth.getUser()` checks whether a session already exists.
+3. If a session exists, `fetchUserRole()` checks `profiles` first, then falls back to `resident`.
+4. The app stores the session in state and renders `UserTabs`.
+5. `registerForFCM()` runs so the user can receive push notifications.
+
+Code pattern:
+
+```javascript
+const { data: { user } } = await supabase.auth.getUser();
+
+if (user) {
+  const { data: { session: currentSession } } = await supabase.auth.getSession();
+  const role = await fetchUserRole(user.id);
+  setUserRole(role);
+  setSession(currentSession);
+  registerForFCM();
+}
+```
+
+Logic:
+
+- If the user record exists in `profiles`, the app treats the account as a resident.
+- If the user is not found in `profiles` but exists in `sheds`, the role becomes `shed`.
+- If lookup fails or times out, the app falls back safely to `resident` so the UI does not hang.
+
+### New Shed Login Flow
+
+When a new shed owner logs in, the same startup path is used, but the role resolution changes the navigator:
+
+1. The login screen submits credentials using the shed login component.
+2. Supabase returns a valid session.
+3. `fetchUserRole()` checks whether the user exists in `sheds`.
+4. The app stores the session and renders `ShedTabs`.
+5. The shed owner can immediately access stock update and profile tabs.
+
+Role lookup code:
+
+```javascript
+const fetchUserRole = async (userId) => {
+  const roleCheck = (async () => {
+    const { data: profile } = await supabase.from('profiles').select('id').eq('id', userId).maybeSingle();
+    if (profile) return 'resident';
+
+    const { data: shed } = await supabase.from('sheds').select('id').eq('id', userId).maybeSingle();
+    if (shed) return 'shed';
+
+    return 'resident';
+  })();
+
+  return await Promise.race([roleCheck, timeout]);
+};
+```
+
+### Admin Web Auth Pattern
+
+Observed in `admin-web/src/services/authApi.js` and `admin-web/src/utils/session.js`:
+
+- Admin login checks environment values `VITE_ADMIN_USERNAME` and `VITE_ADMIN_PASSWORD`.
+- Session data is stored in localStorage with a fixed token shape.
+- `ProtectedRoute` validates the stored session and redirects invalid access back to `/login`.
+
+Code pattern:
+
+```javascript
+const result = await loginAdmin(form);
+saveAdminSession(result);
+navigate('/admin/overview', { replace: true });
+```
+
+This keeps the admin area separate from mobile auth, which is correct for this codebase because the admin web app uses a fixed credential flow rather than Supabase user sessions.
+
+---
+
+## Notification Pipeline (Restock to FCM)
+
+### Edge Function Behavior in `supabase/index.ts`
+
+Implemented capabilities:
+
+- Loads Supabase and Firebase credentials from environment variables.
+- Builds OAuth access token for Firebase HTTP v1 API using service account private key.
+- Normalizes newline formats in private key (`\\n` and `\n`) before import.
+- Fetches events through lock-aware RPC (`fetch_unprocessed_events_with_lock`).
+- For each event:
+  - fetches eligible users via `get_users_for_restock_fcm`
+  - checks dedup via `check_notification_sent`
+  - sends FCM message in batches (`FCM_BATCH_SIZE` default `15`)
+  - records outcomes via `record_notification_sent`
+  - unlocks/marks processed via `unlock_event`
+- Retry logic increments `attempts` when no successful sends and retries remain.
+
+### Message Content Pattern
+
+```json
+{
+  "notification": {
+    "title": "Fuel Restocked",
+    "body": "<shedName> has restocked <fuelType>."
+  },
+  "data": {
+    "shed_id": "...",
+    "fuel_type": "...",
+    "shed_name": "..."
+  }
+}
+```
+
+### Mobile Device Registration Side
+
+Observed in `src/services/fcm.js`:
+
+- Requests notification permissions.
+- Retrieves FCM token from Firebase messaging module.
+- Writes token to `profiles.fcm_token` and timestamp to `fcm_token_updated_at`.
+- Subscribes to token refresh and re-writes token.
+- Registers foreground and background message handlers.
+
+---
+
+## Main Functions with Code Walkthroughs
+
+### 1) `App.js` - Startup, Session Restore, and Role Routing
+
+This file controls the whole mobile app boot process.
+
+```javascript
+useEffect(() => {
+  setupFCMHandlers();
+}, []);
+
+useEffect(() => {
+  const initializeAuth = async () => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const role = await fetchUserRole(user.id);
+      setUserRole(role);
+      setSession(currentSession);
+      registerForFCM();
+    }
+  };
+
+  initializeAuth();
+}, []);
+```
+
+Logic:
+
+- Starts FCM handlers immediately so notifications work in foreground and background.
+- Restores the previous login session instead of forcing the user to log in again.
+- Resolves whether the account is a resident or a shed owner.
+- Sends the user to the correct tab navigator based on role.
+
+### 2) `src/services/fcm.js` - Token Registration and Message Hooks
+
+```javascript
+export async function registerForFCM() {
+  const authStatus = await messaging().requestPermission();
+  const token = await messaging().getToken();
+
+  const { data: { user } = {} } = await supabase.auth.getUser();
+  if (user?.id) {
+    await supabase.from('profiles').update({
+      fcm_token: token,
+      fcm_token_updated_at: new Date().toISOString(),
+    }).eq('id', user.id);
+  }
+
+  messaging().onTokenRefresh(async (newToken) => {
+    await supabase.from('profiles').update({
+      fcm_token: newToken,
+      fcm_token_updated_at: new Date().toISOString(),
+    }).eq('id', user.id);
+  });
+}
+```
+
+Logic:
+
+- Requests notification permission.
+- Gets the device token from Firebase.
+- Stores the token in `profiles` so the edge function can target the device.
+- Updates the token again whenever Firebase refreshes it.
+
+### 3) `src/screens/UserHome.js` - Map, Distance, and Nearest Shed Selection
+
+```javascript
+const processed = (shedData || []).map(shed => {
+  const R = 6371;
+  const dLat = (shed.latitude - userCoords.latitude) * Math.PI / 180;
+  const dLon = (shed.longitude - userCoords.longitude) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(userCoords.latitude * Math.PI / 180) * Math.cos(shed.latitude * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const dist = parseFloat((R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))).toFixed(2));
+
+  return { ...shed, distance: dist };
+}).sort((a, b) => a.distance - b.distance);
+
+await supabase.from('profiles').update({
+  nearest_shed_id: processed[0].id,
+  nearest_shed_updated_at: new Date().toISOString(),
+}).eq('id', user.id);
+```
+
+Logic:
+
+- Gets the user location once and caches it.
+- Reads verified sheds and fuel stocks.
+- Computes distance to every shed using the Haversine formula.
+- Sorts by distance so the nearest shed becomes the target for future notifications.
+- Stores the nearest shed in `profiles` so later notification logic can target the correct user group.
+
+### 3.1) Map Implementation Used in the App
+
+The map in `UserHome.js` is not a native Google Maps component. It is built with:
+
+- `react-native-webview` to host the map inside the React Native screen
+- `Leaflet` for marker rendering and map interactions
+- `OpenStreetMap` tiles for the base map layer
+
+How it works:
+
+1. The screen builds an HTML string that contains the Leaflet map.
+2. The map is loaded inside a WebView.
+3. User location is shown with a green marker.
+4. Each shed is added as a marker on the map.
+5. Marker color changes based on stock status:
+   - red for out of stock
+   - orange for uncertain stock
+   - grey for no data
+   - gold for normal availability
+6. When a marker is tapped, the WebView posts the shed id back to React Native.
+
+Relevant map code pattern:
+
+```javascript
+var map = L.map('map', { zoomControl: false }).setView([7.87, 80.65], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+var markerGroup = L.layerGroup().addTo(map);
+```
+
+### 4) `src/screens/UserSubmitReport.js` - Community Report Submission
+
+```javascript
+await supabase.from('community_reports').insert([{
+  shed_id: selectedShed.id,
+  user_id: user.id,
+  fuel_type: fuelType,
+  stock_level: stockLevel,
+  vehicle_type: vehicle,
+  queue_length: queue,
+  comment: comment,
+  created_at: new Date().toISOString()
+}]);
+```
+
+Logic:
+
+- The user selects a shed from the map.
+- The screen captures fuel type, stock level, vehicle type, queue length, and comment.
+- A new row is inserted into `community_reports` for admin review and resident visibility.
+
+### 5) `src/screens/ShedHome.js` - Stock Summary Screen
+
+```javascript
+const { data } = await supabase
+  .from('fuel_stocks')
+  .select('*')
+  .eq('shed_id', user.id);
+
+const mergedData = FUEL_TYPES.map(typeObj => {
+  const dbMatch = data?.find(item => item.fuel_type === typeObj.name);
+  return {
+    name: typeObj.name,
+    stock: dbMatch?.stock_liters ?? 0,
+    price: dbMatch?.price_rs ?? 0,
+    date: dbMatch?.next_arrival ?? 'N/A'
+  };
+});
+```
+
+Logic:
+
+- Loads the shed owner’s stock data from `fuel_stocks`.
+- Aligns DB rows to a fixed display list of fuel types.
+- Shows stock, price, and next arrival date in a card-based UI.
+
+### 6) `src/screens/ShedSubmitReport.js` - Stock Update and Restock Trigger
+
+```javascript
+await supabase.from('fuel_stocks').upsert({
+  shed_id: user.id,
+  fuel_type: selectedType,
+  stock_liters: parseFloat(inputStock),
+  price_rs: parseFloat(inputPrice),
+  next_arrival: arrivalDate.toISOString().split('T')[0],
+  last_updated: new Date()
+}, { onConflict: 'shed_id,fuel_type' });
+
+fetch(fn_url, {
+  method: 'POST',
+  headers,
+  body: '{}',
+});
+```
+
+Logic:
+
+- Updates or inserts the stock row for the selected fuel type.
+- Stores the next arrival date.
+- Triggers the restock processor in the background so notifications can be sent without blocking the UI.
+
+### 7) `supabase/index.ts` - Event Locking, Deduplication, and FCM Dispatch
+
+```typescript
+const events = await fetchUnprocessedEventsWithLock();
+
+for (const event of events) {
+  const users = await fetchUsersForShed(event.shed_id);
+  const notificationResult = await sendNotificationsBatch(
+    String(event.id), users, title, body, data
+  );
+
+  if (notificationResult.sentCount > 0 || users.length === 0) {
+    await unlockEvent(String(event.id), true, event.locked_by || undefined);
+  } else {
+    await unlockEvent(String(event.id), false, event.locked_by || undefined);
+    await incrementAttempt(String(event.id), event.attempts);
+  }
+}
+```
+
+Logic:
+
+- Locks a batch of unprocessed events so only one worker handles them.
+- Finds users whose `nearest_shed_id` matches the shed that restocked.
+- Sends messages in parallel batches.
+- Records sent/failed/skipped states to avoid duplicate sends.
+- Marks the event processed only when delivery succeeds or there are no eligible users.
+
+### 8) Admin Web Pages
+
+```javascript
+const [users, sheds, reports, criticalData] = await Promise.all([
+  supabase.from('profiles').select('*', { count: 'exact', head: true }),
+  supabase.from('sheds').select('*', { count: 'exact' }),
+  supabase.from('community_reports').select('*', { count: 'exact', head: true }).gte('created_at', startOfTodayUTC),
+  supabase.from('community_reports').select('created_at, stock_level, sheds (station_name, district)')
+]);
+```
+
+Logic:
+
+- Overview page counts users, sheds, today’s reports, and pending approvals.
+- Fuel station page lists pending and verified sheds, then allows approve/reject actions.
+- Reports page shows submitted reports in newest-first order.
+
+---
+
+## Admin Web Structure
+
+### Route Structure
+
+The admin app is organized in `admin-web/src/App.jsx` as:
+
+```text
+/ -> /login
+/login -> admin login screen
+/admin -> protected admin area
+  /admin/overview
+  /admin/fuel-stations
+  /admin/reports
+```
+
+### Structure Overview
+
+- `admin-web/src/components/layout/AdminLayout.jsx` provides the shared shell for admin pages.
+- `admin-web/src/components/navigation/ProtectedRoute.jsx` blocks access when the saved session is invalid.
+- `admin-web/src/pages/LoginPage.jsx` performs the fixed-credential login check.
+- `admin-web/src/pages/OverviewPage.jsx` shows counts and critical shortage highlights.
+- `admin-web/src/pages/FuelStationsPage.jsx` handles shed approval, rejection, and document preview.
+- `admin-web/src/pages/ReportsPage.jsx` shows all community reports in a table.
+
+### Admin Data Flow
+
+1. Admin submits username and password.
+2. `loginAdmin()` validates against environment credentials.
+3. `saveAdminSession()` stores the session in localStorage.
+4. `ProtectedRoute` verifies the session before showing the dashboard.
+5. Overview, fuel-station, and reports pages query Supabase directly for dashboard data.
+
+### What Each Page Does
+
+- Overview: summary metrics and critical shortage highlights.
+- Fuel stations: pending shed approvals and verification-document access.
+- Reports: recent community reports with user and shed reference snippets.
+
+---
+
+## File-by-File Implementation Analysis
+
+### Mobile Entry & Navigation
+
+- `App.js`: app bootstrap, auth/session restore, role routing, FCM init.
+- `src/screens/UserTabs.js`: resident bottom-tab navigation.
+- `src/screens/ShedTabs.js`: shed bottom-tab navigation.
+
+### Resident Flow
+
+- `src/screens/UserHome.js`: location, shed fetch, stock/queue status derivation, nearest shed writeback.
+- `src/screens/UserFilters.js`: user filter/preferences screen (used by UserHome query flow).
+- `src/screens/UserSubmitReport.js`: map-assisted report submission to `community_reports`.
+- `src/screens/UserAccount.js`: account/profile area.
+
+### Shed Flow
+
+- `src/screens/ShedHome.js`: stock summary by fixed fuel type list.
+- `src/screens/ShedSubmitReport.js`: stock and price updates, arrival date, async restock trigger call.
+- `src/screens/ShedProfile.js`: shed profile/account area.
+
+### Admin Web
+
+- `admin-web/src/pages/LoginPage.jsx`: form login against fixed admin credentials.
+- `admin-web/src/pages/OverviewPage.jsx`: counts + recent out-of-stock highlights.
+- `admin-web/src/pages/FuelStationsPage.jsx`: pending approvals, verification doc preview, approve/reject actions.
+- `admin-web/src/pages/ReportsPage.jsx`: report table with latest-first ordering.
+
+### Supabase Integration Files
+
+- `lib/supabase.js`: mobile Supabase client configuration.
+- `admin-web/lib/supabase.js`: web Supabase client configuration.
+- `supabase/index.ts`: edge-function restock processor implementation.
+- `supabase/active_supabase_functions.txt`: documented active trigger/function pieces.
+
+---
+
+## Deployment & Runtime Notes
+
+### Commands Present in Mobile package.json
+
+```bash
+npm run start
+npm run android
+npm run ios
+npm run web
+```
+
+### Commands Present in Admin package.json
+
+```bash
+npm run dev
+npm run build
+npm run preview
+```
+
+### Repo Notes on Edge Deployment
+
+`README.md` contains deployment guidance including:
+
+- Function deployment command
+- Required Supabase/Firebase secrets
+- Trigger-related setup notes
+
+This report does not assert that cloud deployment is currently healthy; it only states what deployment configuration instructions and code paths exist in the repository.
+
+---
+
+## Requirements Traceability Matrix
+
+| Requirement | Code Evidence | Status in code snapshot |
+|---|---|---|
+| Resident authentication | `App.js`, login components, Supabase auth calls | Implemented |
+| Shed authentication | Same auth flow with role split via `profiles/sheds` checks | Implemented |
+| View verified sheds | `UserHome.js` query `.from('sheds').eq('is_verified', true)` | Implemented |
+| Location-aware sorting | Haversine computation + distance sort in `UserHome.js` | Implemented |
+| Submit community report | `UserSubmitReport.js` insert into `community_reports` | Implemented |
+| Shed updates stock | `ShedSubmitReport.js` upsert into `fuel_stocks` | Implemented |
+| Nearest shed targeting data | `UserHome.js` writes `profiles.nearest_shed_id` | Implemented |
+| FCM token registration | `src/services/fcm.js` writes `profiles.fcm_token` | Implemented |
+| Restock event processing | `supabase/index.ts` lock + dedup + send logic | Implemented in repository code |
+| Admin shed moderation | `FuelStationsPage.jsx` approve/reject handlers | Implemented |
+
+---
+
+## Current Risks & Improvement Priorities
+
+### Verified Risks in Current Code Snapshot
+
+1. **Client-side service-role exposure risk**  
+   `src/screens/ShedSubmitReport.js` contains hardcoded service-role bearer key usage for direct function invocation. This should be removed from client code and handled server-side.
+
+2. **Mixed security posture in SQL files**  
+   `sql.txt` and `sql_new.txt` include both strict and relaxed policy fragments. Deployment should use a single reviewed migration path to avoid policy drift.
+
+3. **Runtime ambiguity on edge file location**  
+   Function code is stored in `supabase/index.ts`, while some docs mention `supabase/functions/process-restocks/index.ts`. Consolidating structure will reduce deployment mistakes.
+
+### Practical Next Steps
+
+- Move privileged invocation to secure backend-only path.
+- Convert SQL setup text files into ordered migration files.
+- Add automated tests for edge function branch logic (lock, dedup, retries).
+- Add release checklist that validates trigger + RPC existence in target environment.
+
+---
+
+## Conclusion
+
+Fuel-Check, as represented in this repository, is a functional full-stack project with:
+
+- Mobile resident/shed user workflows
+- Admin moderation and reporting interfaces
+- Supabase-backed storage/auth/data operations
+- Implemented restock-notification processing logic with lock and dedup strategies
+
+This document intentionally avoids assumptions. Every technical claim above is traceable to code and configuration currently present in the project files.
+
+---
+
+**Verification Timestamp:** May 13, 2026  
+**Verification Basis:** Repository code and configuration files only  
+**Report Type:** Fact-checked implementation documentation
+  </script>
+  <script>
+    const md = document.getElementById('md').textContent;
+
+    const mdClean = md.replace(/## Table of Contents[\s\S]*?\n---\n/, '\n');
+
+    const renderFallback = (text) => {
+      const textClean = text.replace(/## Table of Contents[\s\S]*?\n---\n/, '\n');
+      const escaped = textClean.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+      document.getElementById('doc').innerHTML = '<pre>' + escaped + '</pre>';
+      document.getElementById('toc-list').innerHTML = '<span style="color:#64748b">TOC unavailable in fallback mode</span>';
+    };
+
+    if (window.marked && window.DOMPurify) {
+      marked.setOptions({ mangle: false, headerIds: true });
+      const html = DOMPurify.sanitize(marked.parse(mdClean));
+      document.getElementById('doc').innerHTML = html;
+
+      const toc = [];
+      document.querySelectorAll('#doc h1, #doc h2, #doc h3').forEach((h) => {
+        if (!h.id) {
+          h.id = h.textContent.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+        }
+        toc.push({ id: h.id, text: h.textContent, level: h.tagName.toLowerCase() });
+      });
+
+      document.getElementById('toc-list').innerHTML = toc.map(item => {
+        const pad = item.level === 'h1' ? 0 : item.level === 'h2' ? 14 : 28;
+        return `<a href="#${item.id}" style="padding-left:${pad}px">${item.text}</a>`;
+      }).join('');
+    } else {
+      renderFallback(md);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuel-Check | Reset Password</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #FFF4CE; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 2.5rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
+        h2 { margin-bottom: 10px; color: #333; }
+        p { color: #666; font-size: 14px; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 14px; background-color: #FFB800; border: none; border-radius: 10px; color: #000; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 15px; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        #status-message { margin-top: 20px; font-size: 14px; padding: 10px; border-radius: 8px; display: none; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .success { background-color: #d4edda; color: #155724; }
+        #loading { color: #888; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div id="loading">Verifying security token...</div>
+    
+    <div id="auth-form" style="display: none;">
+        <h2>New Password</h2>
+        <p>Your identity is verified. Enter a new password</p>
+        <input type="password" id="pass1" placeholder="New Password">
+        <input type="password" id="pass2" placeholder="Confirm Password">
+        <button id="update-btn" onclick="updatePassword()">Update Password</button>
+    </div>
+
+    <div id="status-message"></div>
+</div>
+
+<script>
+    const CONF = {
+        url: 'https://vdonioovmmuvfpbcbzer.supabase.co',
+        key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkb25pb292bW11dmZwYmNiemVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxMDg3NTYsImV4cCI6MjA4ODY4NDc1Nn0.UP3kTbPR1D3Y7mPUw6hwDC8BOEf5KByIuY61dCIgEPw'
+    };
+
+    // Initialize client with specific settings to avoid the auto-401
+    const supabaseClient = supabase.createClient(CONF.url, CONF.key, {
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+            detectSessionInUrl: true
+        }
+    });
+
+    // Handle the session recovery on load
+    window.addEventListener('DOMContentLoaded', async () => {
+        // Give the library 500ms to parse the #access_token from the URL
+        setTimeout(async () => {
+            const { data, error } = await supabaseClient.auth.getSession();
+            
+            if (data.session) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('auth-form').style.display = 'block';
+            } else {
+                document.getElementById('loading').innerHTML = "❌ Session Expired or Invalid Link.";
+                showStatus("Please request a new reset link from the Fuel-Check app.", "error");
+            }
+        }, 500);
+    });
+
+    async function updatePassword() {
+        const p1 = document.getElementById('pass1').value;
+        const p2 = document.getElementById('pass2').value;
+        const btn = document.getElementById('update-btn');
+
+        if (p1 !== p2) return showStatus("Passwords do not match!", "error");
+        if (p1.length < 6) return showStatus("Password must be at least 6 characters.", "error");
+
+        btn.disabled = true;
+        btn.innerText = "Saving...";
+
+        const { error } = await supabaseClient.auth.updateUser({ password: p1 });
+
+        if (error) {
+            showStatus(error.message, "error");
+            btn.disabled = false;
+            btn.innerText = "Update Password";
+        } else {
+            showStatus("✅ Success! Password updated. You can now log in to the mobile app.", "success");
+            document.getElementById('auth-form').style.display = 'none';
+        }
+    }
+
+    function showStatus(text, type) {
+        const el = document.getElementById('status-message');
+        el.innerText = text;
+        el.className = type;
+        el.style.display = "block";
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "824490215995",
+    "project_id": "fuel-check-8b397",
+    "storage_bucket": "fuel-check-8b397.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:824490215995:android:cc7d5eb96233887c51aa1e",
+        "android_client_info": {
+          "package_name": "com.senuwara.fuelcheck"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAHMz88Wu8aZ0zr1UPL7c_4UJFwu-9dNcE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
