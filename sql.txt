@@ -1,0 +1,220 @@
+
+
+-- 2. Create Residents Table
+CREATE TABLE public.profiles (
+  id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  email TEXT NOT NULL
+);
+
+-- 3. Create Sheds Table (Separate)
+CREATE TABLE public.sheds (
+  id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+  station_name TEXT NOT NULL,
+  owner_name TEXT NOT NULL,
+  contact_no TEXT NOT NULL,
+  email TEXT NOT NULL,
+  address TEXT NOT NULL,
+  district TEXT NOT NULL,
+  latitude FLOAT NOT NULL,
+  longitude FLOAT NOT NULL,
+  document_url TEXT NOT NULL,
+  is_verified BOOLEAN DEFAULT false
+);
+
+-- 4. Enable Security
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sheds ENABLE ROW LEVEL SECURITY;
+
+-- 5. RELAXED SIGNUP POLICIES (Fixes "Database Error")
+-- These allow the initial insert during the auth.signUp process
+CREATE POLICY "Enable insert for authenticated users only" 
+ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Enable insert for authenticated users only" 
+ON public.sheds FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- 6. Storage Bucket (Must exist in UI named 'verification-docs')
+-- Run this to allow document uploads
+CREATE POLICY "Allow uploads" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'verification-docs');
+
+
+
+
+
+
+
+
+-- 1. Allow the user to insert their own shed record
+-- The (auth.uid() = id) ensures a user can only create a shed for their own ID
+CREATE POLICY "Allow individual shed insertion" 
+ON public.sheds FOR INSERT 
+WITH CHECK (auth.uid() = id);
+
+-- 2. Allow the user to view their own shed record
+CREATE POLICY "Allow individual shed selection" 
+ON public.sheds FOR SELECT 
+USING (auth.uid() = id);
+
+-- 3. Storage Policy: Allow users to upload to the 'verification-docs' bucket
+-- Without this, your doc upload will fail even if the database insert works
+CREATE POLICY "Allow authenticated uploads"
+ON storage.objects FOR INSERT 
+TO authenticated 
+WITH CHECK (bucket_id = 'verification-docs');
+
+
+
+-- 1. Drop the old policy to avoid conflicts
+DROP POLICY IF EXISTS "Allow individual shed insertion" ON public.sheds;
+
+-- 2. Create a broader policy for Testing
+-- This allows ANY authenticated user to insert, which helps bypass UID mismatches
+CREATE POLICY "Enable insert for authenticated users only" 
+ON public.sheds FOR INSERT 
+TO authenticated 
+WITH CHECK (true);
+
+-- 3. Ensure the table is actually linked to Auth
+-- Run this just to be sure your schema is correct
+ALTER TABLE public.sheds 
+ALTER COLUMN id SET NOT NULL;
+
+
+
+
+-- 1. Completely disable RLS (The "I don't care about security" switch)
+ALTER TABLE public.sheds DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
+
+-- 2. Explicitly grant all permissions to the 'anon' and 'authenticated' roles
+GRANT ALL ON TABLE public.sheds TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.profiles TO anon, authenticated, service_role;
+
+-- 3. Grant usage on the public schema just in case
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+
+
+-- Disable RLS to bypass "Policy Violation" errors
+ALTER TABLE public.sheds DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
+
+-- Explicitly allow the 'anon' role (used by Expo) to do everything
+GRANT ALL ON TABLE public.sheds TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.profiles TO anon, authenticated, service_role;
+
+
+-- 1. Ensure the bucket exists (You can also do this in the UI)
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('verification-docs', 'verification-docs', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 2. Allow Authenticated users to UPLOAD files
+CREATE POLICY "Allow shed owners to upload licenses"
+ON storage.objects FOR INSERT 
+TO authenticated 
+WITH CHECK (bucket_id = 'verification-docs');
+
+-- 3. Allow public access to view the files (Optional, for admin verification)
+CREATE POLICY "Allow public viewing of licenses"
+ON storage.objects FOR SELECT 
+USING (bucket_id = 'verification-docs');
+
+
+-------
+-- Create fuel stocks table
+CREATE TABLE fuel_stocks (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  shed_id UUID REFERENCES sheds(id) ON DELETE CASCADE,
+  fuel_type TEXT NOT NULL,
+  stock_liters FLOAT DEFAULT 0,
+  price_rs FLOAT DEFAULT 0,
+  last_updated TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+  UNIQUE(shed_id, fuel_type) -- Ensures one row per fuel type per shed
+);
+
+-- Enable RLS (Security)
+ALTER TABLE fuel_stocks ENABLE ROW LEVEL SECURITY;
+
+-- Allow sheds to update their own data
+CREATE POLICY "Sheds can update their own stock" 
+ON fuel_stocks FOR ALL 
+USING (auth.uid() = shed_id);
+
+ALTER TABLE fuel_stocks ADD COLUMN next_arrival DATE;
+
+---
+
+-- Ensure the foreign key exists so the "join" works
+ALTER TABLE fuel_stocks 
+ADD CONSTRAINT fk_shed 
+FOREIGN KEY (shed_id) 
+REFERENCES sheds(id);
+
+
+--
+
+CREATE TABLE community_reports (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  shed_id UUID REFERENCES sheds(id),
+  user_id UUID REFERENCES profiles(id),
+  fuel_type TEXT,
+  stock_level TEXT,
+  vehicle_type TEXT,
+  queue_length TEXT,
+  comment TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+--
+
+-- 1. Enable RLS on the table (if not already enabled)
+ALTER TABLE community_reports ENABLE ROW LEVEL SECURITY;
+
+-- 2. Create a policy to allow ANY logged-in user to insert a report
+CREATE POLICY "Users can submit fuel reports" 
+ON community_reports 
+FOR INSERT 
+TO authenticated 
+WITH CHECK (true);
+
+-- 3. (Optional but Recommended) Allow users to see the reports
+CREATE POLICY "Anyone can view fuel reports" 
+ON community_reports 
+FOR SELECT 
+TO authenticated 
+USING (true);
+
+--
+ALTER TABLE community_reports 
+ADD COLUMN created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now());
+
+
+---
+CREATE TABLE user_filters (
+  user_id UUID REFERENCES auth.users(id) PRIMARY KEY,
+  favorites_only BOOLEAN DEFAULT false,
+  selected_fuel TEXT,
+  max_distance INTEGER DEFAULT 50,
+  max_queue INTEGER DEFAULT 20,
+  selected_stock TEXT,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Enable RLS so users only touch their own settings
+ALTER TABLE user_filters ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own filters" 
+ON user_filters FOR ALL 
+TO authenticated 
+USING (auth.uid() = user_id);
+
+
+-- Just ensuring the column is ready for the new text
+ALTER TABLE user_filters ALTER COLUMN selected_fuel TYPE TEXT;
+
+
+
+DROP POLICY IF EXISTS "Sheds can update their own stock" ON public.fuel_stocks;
+CREATE POLICY "Public Read Access" ON public.fuel_stocks FOR SELECT USING (true);

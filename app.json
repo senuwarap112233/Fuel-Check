@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "fuelcheck",
+    "slug": "fuel-app",
+    "version": "1.0.2",
+    "scheme": "fuelcheck",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/icon2.png",
+    "splash": {
+      "image": "./assets/icon2.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFB800"
+    },
+    "android": {
+      "package": "com.senuwara.fuelcheck",
+      "launchMode": "singleTask",
+      "googleServicesFile": "./app/google-services.json",
+      "permissions": [
+        "INTERNET",
+        "POST_NOTIFICATIONS"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon2.png",
+        "backgroundColor": "#FFB800"
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "fuelcheck"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-web-browser",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "359cbfd7-484a-471e-a9a1-f60a70c39b12"
+      }
+    },
+    "owner": "haloputhas-organization",
+    "ios": {
+      "bundleIdentifier": "com.senuwara.fuelcheck",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}
