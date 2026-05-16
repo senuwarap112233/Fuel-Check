@@ -19,6 +19,17 @@ export default function UserLogin({ navigation }) {
       return Alert.alert("Login Failed", error.message);
     }
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const userMetadata = user.user_metadata || {};
+      await supabase.from('profiles').upsert([{
+        id: user.id,
+        first_name: userMetadata.first_name || '',
+        last_name: userMetadata.last_name || '',
+        email: user.email || email
+      }], { onConflict: 'id' });
+    }
+
     // Verify if they are a resident in the 'profiles' table
     const { data: profile } = await supabase.from('profiles').select('id').eq('id', data.user.id).single();
     
@@ -38,7 +49,7 @@ export default function UserLogin({ navigation }) {
     
     // Using Magic Link method
    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-  redirectTo: 'https://fuelcheckresetpassword.vercel.app/',
+  redirectTo: 'https://fuelcheckresetpass.vercel.app/',
 });
 
     setLoading(false);

@@ -21,17 +21,9 @@ const UserSignup = ({ navigation }) => {
     try {
       const { data, error: authError } = await supabase.auth.signUp({
         email, password: pass,
-        options: { data: { role: 'user' } }
+        options: { data: { role: 'user', first_name: fName, last_name: lName } }
       });
       if (authError) throw authError;
-
-      const { error: dbError } = await supabase.from('profiles').insert([{
-        id: data.user.id,
-        first_name: fName,
-        last_name: lName,
-        email: email
-      }]);
-      if (dbError) throw dbError;
 
       await supabase.auth.signOut();
 

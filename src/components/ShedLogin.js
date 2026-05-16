@@ -55,7 +55,7 @@ export default function ShedLogin({ navigation }) {
     // Using Magic Link method
     // Using Magic Link method
        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://fuelcheckresetpassword.vercel.app/',
+      redirectTo: 'https://fuelcheckresetpass.vercel.app/',
     });
 
     setLoading(false);
